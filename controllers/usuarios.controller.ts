@@ -1,5 +1,9 @@
 import type {Request, Response, NextFunction } from 'express';
 import Usuario from '../models/usuario.js';
+import fs from 'fs/promises';
+import bcrypt from 'bcryptjs';
+import path from 'path';
+
 
 export const getUsuarios = async (req: Request, res: Response) => {
 
@@ -34,17 +38,54 @@ export const getUsuario = async (req: Request, res: Response) => {
     });
 };
 
-export const PostUsuarios = (req: Request, res: Response) => {
+export const PostUsuarios = async (req: Request, res: Response, next: NextFunction):Promise<void> => {
 
-    const {body} = req;
+    try {
 
-    res.json({
+        const {body} = req;
 
-        msg: 'Post Usuarios',
-        body
-    });
+        const {nombre, email, password} = body;
 
-}
+        if (!nombre || !email || !password) {
+            res.status(400).json({message: 'Lo campos nombre, email y password son obligatorios'});
+            return;
+        }
+
+        const ExisteEmail = await Usuario.findOne({where: {email: email}});
+
+        if (ExisteEmail) {
+            if(req.file){
+                await fs.unlink(path.resolve(req.file.path));
+            }
+            res.status(400).json({message: 'El email ya esta registrado'});
+            return;
+        }
+
+        if(req.file){
+            body.imagen = req.file.filename;
+
+        }else{
+
+            body.imagen = null;
+        }
+
+        const salt = bcrypt.genSaltSync(10);
+        body.password = bcrypt.hashSync(password, salt);
+
+        const usuario = Usuario.build(body);
+        await usuario.save();
+
+        const {password: _, ...usuarioSinPassword} = usuario.toJSON();
+        res.status(201).json({
+            msg: 'Post Usuarios',
+            usuario: usuarioSinPassword
+        });
+
+
+    }catch (error) {
+        next(error);
+    }
+};
 
 export const PuttUsuarios = (req: Request, res: Response) => {
 
