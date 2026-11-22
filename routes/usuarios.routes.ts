@@ -5,7 +5,7 @@ import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import {
     getUsuarios,
     PostUsuarios,
-    PuttUsuarios,
+    PutUsuarios,
     DeleteUsuarios,
     getUsuario
 } from '../controllers/usuarios.controller.js';
@@ -22,7 +22,7 @@ const asyncHandler = (fn: RequestHandler): RequestHandler => {
 router.get('/', asyncHandler(getUsuarios));
 router.get('/:id', asyncHandler(getUsuario));
 router.post('/', upload.single('imagen'), asyncHandler(PostUsuarios));
-router.put('/:id', asyncHandler(PuttUsuarios));
+router.put('/:id', upload.single('imagen'), asyncHandler(PutUsuarios));
 router.delete('/:id', asyncHandler(DeleteUsuarios));
 
 export default router;

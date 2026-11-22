@@ -3,7 +3,7 @@ import Usuario from '../models/usuario.js';
 import fs from 'fs/promises';
 import bcrypt from 'bcryptjs';
 import path from 'path';
-
+import {Op} from 'sequelize';
 
 export const getUsuarios = async (req: Request, res: Response) => {
 
@@ -12,7 +12,7 @@ export const getUsuarios = async (req: Request, res: Response) => {
     });
 
     res.json({
-        msg: 'Get Usuarios',
+        msg: 'Get Usuarios',    
         usuarios
     }); 
 
@@ -87,18 +87,93 @@ export const PostUsuarios = async (req: Request, res: Response, next: NextFuncti
     }
 };
 
-export const PuttUsuarios = (req: Request, res: Response) => {
+export const PutUsuarios = async (req: Request, res: Response): Promise<void> => {
 
     const {id} = req.params;
-    const {body} = req.body;;
+    const body = req.body;;
 
-    res.json({
+ try {
 
-        msg: 'Put Usuarios',
-        id, 
-        body
-    });
-}
+        // Validar ID
+        if (!id || Array.isArray(id)) {
+            res.status(400).json({
+                msg: 'ID de usuario no válido'
+            });
+            return;
+        }
+
+        const usuario = await Usuario.findByPk(id);
+
+        if (!usuario) {
+            res.status(404).json({
+                msg: 'El usuario no existe'
+            });
+            return;
+        }
+
+        const usuarioData = usuario.toJSON();
+
+        if (body.email) {
+
+            const emailExistente = await Usuario.findOne({
+                where: {
+                    email: body.email,
+                    id: {
+                        [Op.ne]: id
+                    }
+                }
+            });
+
+            if (emailExistente) {
+
+                if (req.file) {
+                    await fs.unlink(path.resolve(req.file.path));
+                }
+
+                res.status(400).json({
+                    msg: `El email ${body.email} ya está registrado`
+                });
+                return;
+            }
+        }
+
+        if (req.file) {
+            body.imagen = req.file.filename;
+        }
+
+        if (body.password) {
+            const salt = bcrypt.genSaltSync(10);
+            body.password = bcrypt.hashSync(body.password, salt);
+        }
+
+        await usuario.update(body);
+
+        if (req.file && usuarioData.imagen) {
+            try {
+                await fs.unlink(
+                    path.resolve('uploads', usuarioData.imagen)
+                );
+            } catch (error) {
+                console.error('Error al eliminar la imagen anterior:', error);
+            }
+        }
+
+        const { password: _, ...usuarioSinPassword } = usuario.toJSON();
+
+        res.json({
+            msg: 'Usuario actualizado correctamente',
+            usuario: usuarioSinPassword
+        });
+
+    } catch (error) {
+
+        console.error(error);
+
+        res.status(500).json({
+            msg: 'Error interno del servidor'
+        });
+    }
+};
 
 
 export const DeleteUsuarios = (req: Request, res: Response) => {
