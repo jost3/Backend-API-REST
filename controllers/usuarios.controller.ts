@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 import bcrypt from 'bcryptjs';
 import path from 'path';
 import {Op} from 'sequelize';
+import getConnection from '../database/connectionQuery.js';
 
 export const getUsuarios = async (req: Request, res: Response) => {
 
@@ -176,13 +177,33 @@ export const PutUsuarios = async (req: Request, res: Response): Promise<void> =>
 };
 
 
-export const DeleteUsuarios = (req: Request, res: Response) => {
+export const DeleteUsuarios = async (req: Request, res: Response) => {
 
     const {id} = req.params;
 
-    res.json({
+    try {
 
-        msg: 'Delete Usuarios',
-    });
+
+        const connection = await getConnection();
+
+        const [rowa] = await connection.query('SELECT * FROM usuarios WHERE id = ?', [id]);
+
+        if ((rowa as any).length === 0) {
+            return res.status(404).json({message: 'El usuario no existe en la base de datos'});
+        }
+
+        const {imagen} = (rowa as any)[0];  
+        await fs.unlink(path.resolve(`uploads/${imagen}`));
+        console.log('Imagen eliminada del servidor');
+        
+        await connection.query('DELETE FROM usuarios WHERE id = ?', [id]);
+        res.json({message: 'El Usuario eliminado correctamente'});
+
+    }catch (error) {
+
+        console.error(error);
+        res.status(500).json({message:'Error interno del servidor'})
+
+    }
 
 }
