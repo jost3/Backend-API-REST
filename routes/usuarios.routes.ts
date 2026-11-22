@@ -7,10 +7,11 @@ import {
     PostUsuarios,
     PutUsuarios,
     DeleteUsuarios,
-    getUsuario
+    getUsuario,
+    Login
 } from '../controllers/usuarios.controller.js';
 import {upload} from '../middlewares/multerConfig.js';
-
+import { verficarToken } from '../middlewares/verificarToken.js';
 const router = Router();
 
 const asyncHandler = (fn: RequestHandler): RequestHandler => {
@@ -19,10 +20,11 @@ const asyncHandler = (fn: RequestHandler): RequestHandler => {
     };
 };
 
-router.get('/', asyncHandler(getUsuarios));
-router.get('/:id', asyncHandler(getUsuario));
-router.post('/', upload.single('imagen'), asyncHandler(PostUsuarios));
-router.put('/:id', upload.single('imagen'), asyncHandler(PutUsuarios));
-router.delete('/:id', asyncHandler(DeleteUsuarios));
+router.get('/',verficarToken  ,asyncHandler(getUsuarios));
+router.get('/:id', verficarToken, asyncHandler(getUsuario));
+router.post('/',verficarToken, upload.single('imagen'), asyncHandler(PostUsuarios));
+router.put('/:id',verficarToken, upload.single('imagen'), asyncHandler(PutUsuarios));
+router.delete('/:id',verficarToken, asyncHandler(DeleteUsuarios));
+router.post('/login', asyncHandler(Login));
 
 export default router;

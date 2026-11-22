@@ -5,6 +5,8 @@ import bcrypt from 'bcryptjs';
 import path from 'path';
 import {Op} from 'sequelize';
 import getConnection from '../database/connectionQuery.js';
+import jwt from 'jsonwebtoken'
+import { JWT_SECRET } from '../database/configjwt.js';
 
 export const getUsuarios = async (req: Request, res: Response) => {
 
@@ -207,3 +209,51 @@ export const DeleteUsuarios = async (req: Request, res: Response) => {
     }
 
 }
+
+
+export const Login = async (req: Request, res: Response) => {
+    const { email, password } = req.body;
+
+    try {
+        const usuario = await Usuario.findOne({ where: { email } });
+
+       
+        if (!usuario) {
+            return res.status(400).json({
+                message: 'Credenciales incorrectas'
+            });
+        }
+
+        const usuarioData = usuario.toJSON();
+
+       
+        const ValidPassword = await bcrypt.compare(
+            password,
+            usuarioData.password
+        );
+
+        if (!ValidPassword) {
+            return res.status(400).json({
+                message: 'Credenciales incorrectas'
+            });
+        }
+
+        
+        const token = jwt.sign({
+            id: usuarioData.id,
+            email: usuarioData.email,
+            nombre: usuarioData.nombre,
+            imagen: usuarioData.imagen,
+            estado: usuarioData.estado
+        }, JWT_SECRET, { expiresIn: '24h' });
+
+        return res.json(token);
+
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            message: 'Error interno del servidor'
+        });
+    }
+};
